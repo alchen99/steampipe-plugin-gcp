@@ -87,6 +87,13 @@ func tableGcpArtifactRegistryRepository(ctx context.Context) *plugin.Table {
 
 			// JSON field
 			{
+				Name:        "iam_policy",
+				Description: "An Identity and Access Management (IAM) policy, which specifies access controls for Google Cloud resources. A `Policy` is a collection of `bindings`. A `binding` binds one or more `members` to a single `role`. Members can be user accounts, service accounts, Google groups, and domains (such as G Suite). A `role` is a named list of permissions; each `role` can be an IAM predefined role or a user-created custom role. For some types of Google Cloud resources, a `binding` can also specify a `condition`, which is a logical expression that allows access to a resource only if the expression evaluates to `true`.",
+				Type:        proto.ColumnType_JSON,
+				Hydrate:     getArtifactRegistryRepoistoryIAMPolicy,
+				Transform:   transform.FromValue(),
+			},
+			{
 				Name:        "cleanup_policies",
 				Description: "Cleanup policies for this repository.",
 				Type:        proto.ColumnType_JSON,
@@ -169,6 +176,7 @@ func tableGcpArtifactRegistryRepository(ctx context.Context) *plugin.Table {
 //// LIST FUNCTION
 
 func listArtifactRegistryRepositories(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
+	plugin.Logger(ctx).Trace("listArtifactRegistryRepositories")
 	region := d.EqualsQualString("location")
 
 	var location string
@@ -260,6 +268,31 @@ func getArtifactRegistryRepository(ctx context.Context, d *plugin.QueryData, h *
 	resp, err := service.Projects.Locations.Repositories.Get("projects/" + project + "/locations/" + location + "/repositories/" + name).Do()
 	if err != nil {
 		plugin.Logger(ctx).Error("gcp_artifact_registry_repository.getArtifactRegistryRepository", "api_error", err)
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func getArtifactRegistryRepoistoryIAMPolicy(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
+	plugin.Logger(ctx).Trace("getArtifactRegistryRepoistoryIAMPolicy")
+	data := h.Item.(*artifactregistry.Repository)
+	projectID := strings.Split(data.Name, "/")[1]
+	location := strings.Split(data.Name, "/")[3]
+	name := strings.Split(data.Name, "/")[5]
+
+	// Create Service Connection
+	service, err := ArtifactRegistryService(ctx, d)
+	if err != nil {
+		plugin.Logger(ctx).Error("gcp_artifact_registry_repository.getArtifactRegistryRepoistoryIAMPolicy", "service_error", err)
+		return nil, err
+	}
+
+	// Get project details
+	plugin.Logger(ctx).Trace("gcp_artifact_registry_repository.getArtifactRegistryRepoistoryIAMPolicy", "repository", "projects/"+projectID+"/locations/"+location+"/repositories/"+name)
+	resp, err := service.Projects.Locations.Repositories.GetIamPolicy("projects/" + projectID + "/locations/" + location + "/repositories/" + name).Do()
+	if err != nil {
+		plugin.Logger(ctx).Error("gcp_artifact_registry_repository.getArtifactRegistryRepoistoryIAMPolicy", "api_error", err)
 		return nil, err
 	}
 
