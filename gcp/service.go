@@ -4,6 +4,7 @@ import (
 	"context"
 
 	aiplatform "cloud.google.com/go/aiplatform/apiv1"
+	asset "cloud.google.com/go/asset/apiv1"
 	redis "cloud.google.com/go/redis/apiv1"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 	"google.golang.org/api/accessapproval/v1"
@@ -235,6 +236,27 @@ func BigtableAdminService(ctx context.Context, d *plugin.QueryData) (*bigtablead
 
 	// so it was not in cache - create service
 	svc, err := bigtableadmin.NewService(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
+	return svc, nil
+}
+
+// CloudAssetInventoryService returns the service connection for GCP Cloud Asset Inventory service
+func CloudAssetInventoryService(ctx context.Context, d *plugin.QueryData) (*asset.Client, error) {
+	// have we already created and cached the service?
+	serviceCacheKey := "CloudAssetInventoryService"
+	if cachedData, ok := d.ConnectionManager.Cache.Get(serviceCacheKey); ok {
+		return cachedData.(*asset.Client), nil
+	}
+
+	// To get config arguments from plugin config file
+	opts := setSessionConfig(ctx, d.Connection)
+
+	// so it was not in cache - create service
+	svc, err := asset.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
