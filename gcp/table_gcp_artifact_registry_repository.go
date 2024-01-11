@@ -221,6 +221,7 @@ func listArtifactRegistryRepositories(ctx context.Context, d *plugin.QueryData, 
 	resp := service.Projects.Locations.Repositories.List(data).PageSize(*pageSize)
 	if err := resp.Pages(ctx, func(page *artifactregistry.ListRepositoriesResponse) error {
 		for _, repo := range page.Repositories {
+			plugin.Logger(ctx).Trace("gcp_artifact_registry_repository.listArtifactRegistryRepositories", "repo", repo)
 			d.StreamListItem(ctx, repo)
 
 			// Check if context has been cancelled or if the limit has been hit (if specified)
